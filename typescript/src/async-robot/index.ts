@@ -22,14 +22,16 @@ const sleep = (seconds: number) => {
   });
 }
 
+type TaskName = 'walking' | 'standing' | 'sitting';
 interface Task {
-  name: string;
+  name: TaskName;
   task: () => Promise<void>;
 }
 
 class Robot {
   queue: Array<Task> = [];
   idle = true;
+  state: TaskName = 'sitting';
 
   startTask (task: Task) {
     if (this.idle) {
@@ -52,10 +54,23 @@ class Robot {
     }
   }
 
+  sitDown (seconds = 1) {
+    this.startTask({
+      name: 'sitting',
+      task: async () => {
+        this.state = 'sitting';
+        await sleep(seconds);
+      }
+    });
+
+    return this;
+  }
+
   standUp (seconds = 1) {
     this.startTask({
       name: 'standing',
       task: async () => {
+        this.state = 'standing';
         await sleep(seconds);
       }
     });
@@ -67,6 +82,11 @@ class Robot {
     this.startTask({
       name: 'walking',
       task: async () => {
+        if (this.state === 'sitting') {
+          console.log("Can't walk while sitting. Stand up first.");
+          return
+        }
+        this.state = 'walking';
         await sleep(seconds);
       }
     });
@@ -76,4 +96,5 @@ class Robot {
 }
 
 const wallE = new Robot();
-wallE.standUp().walk().walk(5).walk(2).standUp(2);
+wallE.walk(5);
+wallE.standUp(0).walk(2).sitDown(0).walk(5);
