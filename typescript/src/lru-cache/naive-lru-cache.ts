@@ -1,6 +1,6 @@
 type Key = number;
 type Value = string;
-type NoValue = -1;
+export const NoValue = -1;
 
 export class LRUCache {
   public capacity: number;
@@ -17,8 +17,8 @@ export class LRUCache {
     };
   }
   
-  public get(key: Key): Value | NoValue {
-    return this.storage.elements.get(key) || -1;
+  public get(key: Key): Value | typeof NoValue {
+    return this.storage.elements.get(key) || NoValue;
   }
   
   private _add(key: Key, value: Value) {
@@ -54,26 +54,3 @@ export class LRUCache {
 
   }
 }
-
-let cache = new LRUCache(1);
-console.log(cache.capacity);
-console.log(cache.get(0) === -1)
-
-cache.put(1, '2');
-console.log(cache.get(1) === '2');
-
-cache.put(2, "2");
-console.log(cache.get(1) === -1);
-console.log(cache.get(2) === "2");
-
-cache = new LRUCache(3);
-cache.put(1, "1");
-cache.put(2, "2");
-cache.put(3, "3");
-console.log(cache.storage.elementsOrder.join(",") === "1,2,3");
-// console.log(cache.storage.elementsOrder)
-
-cache.put(2, "foo");
-console.log(cache.get(2) === "foo");
-// console.log(cache.storage.elementsOrder)
-console.log(cache.storage.elementsOrder.join(",") === "1,3,2");
