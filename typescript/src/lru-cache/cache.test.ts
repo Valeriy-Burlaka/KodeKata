@@ -1,18 +1,21 @@
-import { LRUCache, NoValue } from './naive-lru-cache';
+import { LRUCache as LRUCacheNaive } from './naive-lru-cache';
+
+import { NO_VALUE } from './constants';
+import { type Cache } from './types';
 
 /*
   This is not a good unit-test because testing `.get()` implementation depends on working `.put()` impl. and so on.
   However, the test does its job well as an integration test, assessing the functionality of the cache as a whole.
 */
 describe('LRU Cache', () => {
-  let cache: LRUCache;
+  let cache: Cache;
 
   beforeEach(() => {
-    cache = new LRUCache(1);
+    cache = new LRUCacheNaive(1);
   });
 
   it('returns no value when key is not in cache', () => {
-    expect(cache.get(1)).toEqual(NoValue);
+    expect(cache.get(1)).toEqual(NO_VALUE);
   });
 
   it('returns a value from cache', () => {
@@ -25,7 +28,7 @@ describe('LRU Cache', () => {
     expect(cache.get(1)).toEqual('2');
     
     cache.put(2, 'new');
-    expect(cache.get(1)).toEqual(NoValue); // evicted
+    expect(cache.get(1)).toEqual(NO_VALUE); // evicted
     expect(cache.get(2)).toEqual('new');
   });
   
@@ -39,7 +42,7 @@ describe('LRU Cache', () => {
 
   // When a key is updated, it becomes the most recently used key
   it('updates the key value and refreshes the key in queue', () => {
-    cache = new LRUCache(3);
+    cache = new LRUCacheNaive(3);
     cache.put(1, '1');
     cache.put(2, '2');
     cache.put(3, '3');

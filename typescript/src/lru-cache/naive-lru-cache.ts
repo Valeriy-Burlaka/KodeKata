@@ -1,14 +1,17 @@
-type Key = number;
-type Value = string;
-type Items = Map<Key, Value>;
+import { NO_VALUE } from './constants';
+import {
+  type Cache,
+  type Key,
+  type Value,
+  type Items,
+  type NoValue,
+} from './types';
 
-export const NoValue = -1;
-
-export class LRUCache {
+export class LRUCache implements Cache {
   public capacity: number;
   public storage: {
     items: Items;
-    itemsOrder: Array<Key>;
+    itemsOrder: Key[];
   };
   
   constructor (capacity: number) {
@@ -19,8 +22,8 @@ export class LRUCache {
     };
   }
   
-  public get(key: Key): Value | typeof NoValue {
-    return this.storage.items.get(key) || NoValue;
+  public get(key: Key): Value | NoValue {
+    return this.storage.items.get(key) || NO_VALUE;
   }
   
   public put(key: Key, value: Value) {
