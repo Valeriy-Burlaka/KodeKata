@@ -8,5 +8,5 @@ export type NoValue = typeof NO_VALUE;
 export interface Cache {
   get: (key: Key) => Value | NoValue;
   put: (key: Key, value: Value) => void;
-  storage: { itemsOrder: Key[] }
+  readonly itemsOrder: Key[];
 }

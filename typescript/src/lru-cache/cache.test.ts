@@ -1,4 +1,5 @@
-import { LRUCache as LRUCacheNaive } from './naive-lru-cache';
+// import { LRUCache } from './naive-lru-cache';
+import { LRUCache } from './lru-cache';
 
 import { NO_VALUE } from './constants';
 import { type Cache } from './types';
@@ -11,7 +12,7 @@ describe('LRU Cache', () => {
   let cache: Cache;
 
   beforeEach(() => {
-    cache = new LRUCacheNaive(1);
+    cache = new LRUCache(1);
   });
 
   it('returns no value when key is not in cache', () => {
@@ -42,14 +43,22 @@ describe('LRU Cache', () => {
 
   // When a key is updated, it becomes the most recently used key
   it('updates the key value and refreshes the key in queue', () => {
-    cache = new LRUCacheNaive(3);
+    cache = new LRUCache(3);
     cache.put(1, '1');
     cache.put(2, '2');
     cache.put(3, '3');
-    expect(cache.storage.itemsOrder).toMatchObject([1, 2, 3]);
-
-    cache.put(2, 'foo');
-    expect(cache.get(2)).toEqual('foo');
-    expect(cache.storage.itemsOrder).toMatchObject([1, 3, 2]);
+    expect(cache.itemsOrder).toMatchObject([1, 2, 3]);
+    // Test updating head item
+    cache.put(1, 'bar');
+    expect(cache.get(1)).toEqual('bar');
+    expect(cache.itemsOrder).toMatchObject([2, 3, 1]);
+    // Test updating middle item
+    cache.put(3, 'foo');
+    expect(cache.get(3)).toEqual('foo');
+    expect(cache.itemsOrder).toMatchObject([2, 1, 3]);
+    // Test updating an item that is already at tail
+    cache.put(3, 'foo');
+    expect(cache.get(3)).toEqual('foo');
+    expect(cache.itemsOrder).toMatchObject([2, 1, 3]);    
   });
 });

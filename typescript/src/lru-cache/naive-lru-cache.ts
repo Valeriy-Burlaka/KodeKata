@@ -9,28 +9,24 @@ import {
 
 export class LRUCache implements Cache {
   public capacity: number;
-  public storage: {
-    items: Items;
-    itemsOrder: Key[];
-  };
+  public storage: Items;
+  private _itemsOrder: Key[];
   
   constructor (capacity: number) {
     this.capacity = capacity;
-    this.storage = {
-      items: new Map(),
-      itemsOrder: [],
-    };
+    this.storage = new Map();
+    this._itemsOrder = [];
   }
   
   public get(key: Key): Value | NoValue {
-    return this.storage.items.get(key) || NO_VALUE;
+    return this.storage.get(key) || NO_VALUE;
   }
   
   public put(key: Key, value: Value) {
     // The item doesn't exist in our cache
     if (this.get(key) === NO_VALUE) {
       // We have capacity to just add a new item
-      if (this.storage.itemsOrder.length < this.capacity) {
+      if (this._itemsOrder.length < this.capacity) {
         this.addItem(key, value);
       // We don't have capacity - remove the oldest elem from the cache and add a new item
       } else {
@@ -43,29 +39,33 @@ export class LRUCache implements Cache {
     }
   }
 
+  public get itemsOrder(): Key[] {
+    return this._itemsOrder;
+  }
+
   private addItem(key: Key, value: Value) {
-    this.storage.items.set(key, value);
-    this.storage.itemsOrder.push(key);
+    this.storage.set(key, value);
+    this._itemsOrder.push(key);
   }
 
   private removeOldestItem() {
-    const lastItemKey = this.storage.itemsOrder[0];
-    this.storage.items.delete(lastItemKey);
-    this.storage.itemsOrder.shift();
+    const lastItemKey = this._itemsOrder[0];
+    this.storage.delete(lastItemKey);
+    this._itemsOrder.shift();
   }
 
   private refreshKey(key: Key) {
-    const thisKeyPosition = this.storage.itemsOrder.indexOf(key);
+    const thisKeyPosition = this._itemsOrder.indexOf(key);
     const newItemsOrder = [
-      ...this.storage.itemsOrder.slice(0, thisKeyPosition),
-      ...this.storage.itemsOrder.slice(thisKeyPosition + 1),
+      ...this._itemsOrder.slice(0, thisKeyPosition),
+      ...this._itemsOrder.slice(thisKeyPosition + 1),
       key,
     ];
-    this.storage.itemsOrder = newItemsOrder;
+    this._itemsOrder = newItemsOrder;
   }
 
   private updateItem(key: Key, value: Value) {
-    this.storage.items.set(key, value);
+    this.storage.set(key, value);
     this.refreshKey(key);
   }
 }
