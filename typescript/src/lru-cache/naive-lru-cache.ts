@@ -28,7 +28,7 @@ export class LRUCache implements Cache {
   
   public put(key: Key, value: Value) {
     // The item doesn't exist in our cache
-    if (this.get(key) < 0) {
+    if (this.get(key) === NO_VALUE) {
       // We have capacity to just add a new item
       if (this.storage.itemsOrder.length < this.capacity) {
         this.addItem(key, value);
