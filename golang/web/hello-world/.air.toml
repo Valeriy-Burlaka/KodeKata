@@ -1,0 +1,11 @@
+[build]
+	cmd = "go build -o ./tmp/main ./main.go"
+	bin = "./tmp/main"
+	delay = 1000ms
+
+[watch]
+	includes = ["*.go", "html/*.html"]
+	excludes = ["tmp"]
+
+[serve]
+	command = "./tmp/main"
