@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Server-Sent Events</title>
+</head>
+<body>
+    <h1>Server-Sent Events</h1>
+    <div id="events"></div>
+    <script>
+        const events = document.getElementById('events');
+        const eventSource = new EventSource('/events');
+
+        eventSource.addEventListener("ping", (event) => {
+            console.log("Ping:", event);
+        })
+    </script>
+</body>
+</html>
