@@ -2,26 +2,19 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
+	"path"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 // Event represents a server-sent event
 type Event struct {
 	Event string
 	Data  string
-}
-
-func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "index.html")
-	})
-
-	http.HandleFunc("/events", handleSSE)
-
-	log.Printf("Server starting on :8080...")
-	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 func handleSSE(w http.ResponseWriter, r *http.Request) {
@@ -66,4 +59,119 @@ func handleSSE(w http.ResponseWriter, r *http.Request) {
 			w.(http.Flusher).Flush()
 		}
 	}
+}
+
+func handleSpaceNew(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		id, err := generateID()
+		if err != nil {
+			log.Printf("failed to generate ID: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		space := &Space{
+			ID:        id,
+			Rows:      10,
+			Cols:      10,
+			Enabled:   make([]string, 0),
+			CreatedAt: time.Now(),
+		}
+
+		if err := store.SaveSpace(space); err != nil {
+			log.Printf("failed to save space: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Redirect(w, r, path.Join("/space", id), http.StatusSeeOther)
+	}
+}
+
+var indexTmpl *template.Template
+var spaceTmpl *template.Template
+
+func init() {
+	indexTmpl = template.Must(template.ParseFiles("index.html"))
+	spaceTmpl = template.Must(template.ParseFiles("space.html"))
+}
+
+type IndexPageData struct {
+	Spaces []*Space
+}
+
+func handleIndex(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		store.mu.RLock()
+		spaces := make([]*Space, 0, len(store.spaces))
+		for _, space := range store.spaces {
+			spaces = append(spaces, space)
+		}
+		store.mu.RUnlock()
+
+		data := IndexPageData{Spaces: spaces}
+		if err := indexTmpl.Execute(w, data); err != nil {
+			log.Printf("failed to execute template: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+type SpacePageData struct {
+	Space *Space
+}
+
+func handleSpace(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		spaceID := vars["id"]
+
+		// Get space data from store
+		space, err := store.GetSpace(spaceID)
+		if err != nil {
+			log.Printf("Error getting space %s: %v", spaceID, err)
+			http.Error(w, "Space not found", http.StatusNotFound)
+			return
+		}
+
+		// Prepare template data
+		data := SpacePageData{
+			Space: space,
+		}
+
+		// Set content type
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+		// Render template
+		if err := spaceTmpl.Execute(w, data); err != nil {
+			log.Printf("Error rendering template: %v", err)
+			http.Error(w, "Error rendering page", http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func main() {
+	store, err := NewStore("spaces.json")
+	if err != nil {
+		log.Fatalf("failed to create store: %v", err)
+	}
+
+	r := mux.NewRouter()
+
+	r.HandleFunc("/", handleIndex(store)).Methods("GET")
+
+	r.HandleFunc("/spaces/new", handleSpaceNew(store)).Methods("POST")
+	r.HandleFunc("/space/{id}", handleSpace(store)).Methods("GET")
+
+	http.HandleFunc("/events", handleSSE)
+
+	addr := fmt.Sprintf("%s:%d", "localhost", 8080)
+	log.Printf("Server starting on %s", addr)
+	log.Fatal(http.ListenAndServe(addr, r))
 }

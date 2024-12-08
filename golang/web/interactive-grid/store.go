@@ -9,13 +9,6 @@ import (
 	"time"
 )
 
-type Space struct {
-	ID      string   `json:"id"`
-	Rows    int      `json:"rows"`
-	Cols    int      `json:"cols"`
-	Enabled []string `json:"enabled"`
-}
-
 type Store struct {
 	mu         sync.RWMutex
 	spaces     map[string]*Space
@@ -68,24 +61,24 @@ func (s *Store) dump() error {
 	if err != nil {
 		return err
 	}
+
 	return os.WriteFile(s.path, data, 0644)
 }
 
 func (s *Store) SaveSpace(space *Space) error {
+	s.mu.Lock()
 	s.spaceLocks[space.ID] = &sync.RWMutex{}
 	s.spaces[space.ID] = space
+	s.mu.Unlock()
+
 	return nil
 }
 
 func (s *Store) GetSpace(id string) (*Space, error) {
-	lock, ok := s.spaceLocks[id]
+	space, ok := s.spaces[id]
 	if !ok {
 		return nil, fmt.Errorf("space not found: %s", id)
 	}
-
-	lock.RLock()
-	space := s.spaces[id]
-	lock.RUnlock()
 
 	return space, nil
 }

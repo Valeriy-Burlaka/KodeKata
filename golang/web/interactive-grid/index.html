@@ -1,124 +1,111 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <title>Collaborative Spaces</title>
     <style>
-        .controls {
-            margin: 20px;
-            display: flex;
-            gap: 20px;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
         }
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
         }
-        button {
-            padding: 5px 15px;
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .create-space {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .create-space h2 {
+            margin-top: 0;
+            color: #444;
+        }
+        .create-space form {
+            text-align: center;
+        }
+        .create-space button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
             font-size: 16px;
         }
-        canvas {
-            border: 1px solid #ccc;
-            margin: 20px;
+        .create-space button:hover {
+            background: #45a049;
+        }
+        .spaces-list {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .spaces-list h2 {
+            margin-top: 0;
+            color: #444;
+        }
+        .space-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .space-item:last-child {
+            border-bottom: none;
+        }
+        .space-item a {
+            color: #2196F3;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .space-item a:hover {
+            text-decoration: underline;
+        }
+        .space-info {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
         }
     </style>
 </head>
 <body>
-    <div class="controls">
-        <div class="control-group">
-            <span>Columns:</span>
-            <button onclick="adjustGrid('cols', -1)">-</button>
-            <button onclick="adjustGrid('cols', 1)">+</button>
+    <div class="container">
+        <h1>Collaborative Spaces</h1>
+
+        <div class="create-space">
+            <h2>Create New Space</h2>
+            <form action="/spaces/new" method="POST">
+                <button type="submit">Create Space</button>
+            </form>
         </div>
-        <div class="control-group">
-            <span>Rows:</span>
-            <button onclick="adjustGrid('rows', -1)">-</button>
-            <button onclick="adjustGrid('rows', 1)">+</button>
+
+        <div class="spaces-list">
+            <h2>Available Spaces</h2>
+            {{if .Spaces}}
+                {{range .Spaces}}
+                    <div class="space-item">
+                        <a href="/space/{{.ID}}">Space {{.ID}}</a>
+                        <div class="space-info">
+                            Created: {{.CreatedAt.Format "January 2, 2006 15:04:05"}}
+                            <br>
+                            Size: {{.Rows}}x{{.Cols}}
+                        </div>
+                    </div>
+                {{end}}
+            {{else}}
+                <p>No spaces available. Create one to get started!</p>
+            {{end}}
         </div>
     </div>
-    <canvas id="gridCanvas"></canvas>
-
-    <script>
-        const canvas = document.getElementById('gridCanvas');
-        const ctx = canvas.getContext('2d');
-        const CELL_SIZE = 19; // ~5mm (19px ≈ 5mm at typical screen resolutions)
-
-        let grid = {
-            cols: 10,
-            rows: 10,
-            cells: new Set() // Store enabled cells as "x,y" strings
-        };
-
-        function initCanvas() {
-            canvas.width = grid.cols * CELL_SIZE;
-            canvas.height = grid.rows * CELL_SIZE;
-        }
-
-        function drawGrid() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw grid lines
-            ctx.strokeStyle = '#ccc';
-            ctx.beginPath();
-
-            // Vertical lines
-            for (let x = 0; x <= grid.cols; x++) {
-                ctx.moveTo(x * CELL_SIZE, 0);
-                ctx.lineTo(x * CELL_SIZE, canvas.height);
-            }
-
-            // Horizontal lines
-            for (let y = 0; y <= grid.rows; y++) {
-                ctx.moveTo(0, y * CELL_SIZE);
-                ctx.lineTo(canvas.width, y * CELL_SIZE);
-            }
-
-            // Draw enabled cells
-            ctx.fillStyle = '#4a90e2';
-            grid.cells.forEach(cell => {
-                const [x, y] = cell.split(',').map(Number);
-                ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-            });
-
-            ctx.stroke();
-        }
-
-        function adjustGrid(dimension, delta) {
-            const newValue = grid[dimension] + delta;
-            if (newValue >= 1 && newValue <= 50) {
-                grid[dimension] = newValue;
-                initCanvas();
-                drawGrid();
-            }
-        }
-
-        function handleClick(e) {
-            const rect = canvas.getBoundingClientRect();
-            const x = Math.floor((e.clientX - rect.left) / CELL_SIZE);
-            const y = Math.floor((e.clientY - rect.top) / CELL_SIZE);
-
-            if (x >= 0 && x < grid.cols && y >= 0 && y < grid.rows) {
-                const cellKey = `${x},${y}`;
-                if (grid.cells.has(cellKey)) {
-                    grid.cells.delete(cellKey);
-                } else {
-                    grid.cells.add(cellKey);
-                }
-                drawGrid();
-            }
-        }
-
-        canvas.addEventListener('click', handleClick);
-        initCanvas();
-        drawGrid();
-    </script>
-
-    <script>
-        const events = document.getElementById('events');
-        const eventSource = new EventSource('/events');
-
-        eventSource.addEventListener("ping", (event) => {
-            console.log("Ping:", event);
-        })
-    </script>
 </body>
 </html>
