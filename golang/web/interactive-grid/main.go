@@ -11,6 +11,22 @@ import (
 	"github.com/gorilla/mux"
 )
 
+var indexTmpl *template.Template
+var spaceTmpl *template.Template
+
+func init() {
+	indexTmpl = template.Must(template.ParseFiles("index.html"))
+	spaceTmpl = template.Must(template.ParseFiles("space.html"))
+}
+
+type IndexPageData struct {
+	Spaces []*Space
+}
+
+type SpacePageData struct {
+	Space *Space
+}
+
 // Event represents a server-sent event
 type Event struct {
 	Event string
@@ -61,7 +77,25 @@ func handleSSE(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleSpaceNew(store *Store) http.HandlerFunc {
+func handleIndex(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		store.mu.RLock()
+		spaces := make([]*Space, 0, len(store.spaces))
+		for _, space := range store.spaces {
+			spaces = append(spaces, space)
+		}
+		store.mu.RUnlock()
+
+		data := IndexPageData{Spaces: spaces}
+		if err := indexTmpl.Execute(w, data); err != nil {
+			log.Printf("failed to execute template: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func handleSpaceCreate(store *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -92,41 +126,7 @@ func handleSpaceNew(store *Store) http.HandlerFunc {
 	}
 }
 
-var indexTmpl *template.Template
-var spaceTmpl *template.Template
-
-func init() {
-	indexTmpl = template.Must(template.ParseFiles("index.html"))
-	spaceTmpl = template.Must(template.ParseFiles("space.html"))
-}
-
-type IndexPageData struct {
-	Spaces []*Space
-}
-
-func handleIndex(store *Store) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		store.mu.RLock()
-		spaces := make([]*Space, 0, len(store.spaces))
-		for _, space := range store.spaces {
-			spaces = append(spaces, space)
-		}
-		store.mu.RUnlock()
-
-		data := IndexPageData{Spaces: spaces}
-		if err := indexTmpl.Execute(w, data); err != nil {
-			log.Printf("failed to execute template: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-	}
-}
-
-type SpacePageData struct {
-	Space *Space
-}
-
-func handleSpace(store *Store) http.HandlerFunc {
+func handleSpaceGet(store *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		spaceID := vars["id"]
@@ -166,8 +166,8 @@ func main() {
 
 	r.HandleFunc("/", handleIndex(store)).Methods("GET")
 
-	r.HandleFunc("/spaces/new", handleSpaceNew(store)).Methods("POST")
-	r.HandleFunc("/space/{id}", handleSpace(store)).Methods("GET")
+	r.HandleFunc("/spaces/new", handleSpaceCreate(store)).Methods("POST")
+	r.HandleFunc("/space/{id}", handleSpaceGet(store)).Methods("GET")
 
 	http.HandleFunc("/events", handleSSE)
 
