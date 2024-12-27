@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space</title>
+    <link rel="stylesheet" href="style.css"> </head>
+
+<body>
+    <a href="/">Back to Spaces</a>
+    <h2 id="space-name"></h2>  <!-- Space name will be displayed here -->
+    <div id="space-grid"></div> <!-- The grid will be generated here -->
+    <button id="unlock-button">Unlock Space</button>
+
+
+    <div id="unlock-modal" class="modal">
+        <div class="modal-content">
+          <span class="close-button">&times;</span>
+          <p>Enter Password:</p>
+          <input type="password" id="password-input">
+          <button id="submit-password">Unlock</button>
+        </div>
+      </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

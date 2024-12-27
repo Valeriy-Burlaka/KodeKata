@@ -1,0 +1,42 @@
+[
+  {
+    "id": "551297c9-7d7b-423c-aa85-0b0eccb4a44e",
+    "name": "New Space",
+    "createdAt": "2024-12-26T16:30:21.366021+01:00",
+    "startedAt": null,
+    "activeCells": 0,
+    "clients": 0
+  },
+  {
+    "id": "548d3639-5d1f-4053-9a4f-a84a639c5af6",
+    "name": "New Space",
+    "createdAt": "2024-12-26T16:55:05.167452+01:00",
+    "startedAt": null,
+    "activeCells": 0,
+    "clients": 0
+  },
+  {
+    "id": "b9857427-214f-4a19-a95d-e80b5b420a10",
+    "name": "New Space",
+    "createdAt": "2024-12-26T17:03:42.391209+01:00",
+    "startedAt": null,
+    "activeCells": 0,
+    "clients": 0
+  },
+  {
+    "id": "f42b5669-5862-4c9e-b3d5-1e2f493ef4e2",
+    "name": "New Space",
+    "createdAt": "2024-12-26T22:10:01.0978+01:00",
+    "startedAt": null,
+    "activeCells": 0,
+    "clients": 0
+  },
+  {
+    "id": "9463c805-0773-485d-8288-10aff885b924",
+    "name": "New Space",
+    "createdAt": "2024-12-26T22:17:02.656439+01:00",
+    "startedAt": null,
+    "activeCells": 0,
+    "clients": 0
+  }
+]
