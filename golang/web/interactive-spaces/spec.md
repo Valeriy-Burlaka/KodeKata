@@ -1,12 +1,19 @@
 Implement a web app that allows users to create spaces that stream updates to many users.
-After the space owner "starts" the space, it begins to "evolve", adding one new "active cell" each second
+After the space owner "starts" the space, it begins to "evolve", adding one new "active cell" each second.
+When a new client visit the space page, it gets the most recent state of this space and also subscribes to space updates. The idea is that all clients subscribed to a given space see all evolution happening to this space simultaneously and in a real time.
 
-## Client:
+## General Considerations
+
+- The app doesn't need to be deployed yet: both the client and the server can run on a localhost initially.
+- The backend controls the eveolution state and logic of a space.
+- When evolution of the space is finished (i.e., all cells in the space have finished transferring to an "active" state), the space transfer to "evolution completed" state and we stop.
+
+## Client
 
 General:
 
-- Use Vanilla JS/HTML/CSS for implementation
-- Use Web Components if it makes sense
+- Use Vanilla JS/HTML/CSS and Web Components for implementation
+- Use toasts for displaying errors to the client.
 
 Index /spaces page:
 
@@ -17,25 +24,24 @@ Index /spaces page:
 
 Space /spaces/{id} page:
 
-- If the space was just created (a first visit to a space by its author), displays the space password (only one time)
+- If the space was just created (a first visit to a space by its author), displays the space password (only one time). We use a modal window for this, which warns the user that the password will be displayed only once and suggests to copy it using the "Copy" button.
 - Allows navigation back to the index
 - A 100x100 grid, scrollable. Uses 5mm cell size
 - When space is in "started" state, the cells in the grid are constantly "evolving", adding a new "active cell" approximately each second or so.
 - "inactive" and "active" cells have a different appearance (transparent and colored respectively)
 - When teh space is in "stopped" state, no evolution happens
-- For simplicity, the evolution happens to cells sequentially, starting from the top left corner and going right. When reaching the end of the line, it moves to the next line in the grid and goes right again.
+- For simplicity, the evolution happens to cells sequentially, starting from the top left corner and going right. When reaching the end of the line, it moves to the next line in the grid and goes to the right again.
 - Connects to /spaces/{id}/events SSE endpoint to receive updates to the grid (activated cells) in real time
 - Has "Unlock" button that shows a modal window accepting the space password and unlocks the space for modifications if the password is correct
 - Modifications include editing the space name and stop/pausing the space evolution (activating new cells)
 
-
-## Backend:
+## Backend
 
 General:
 
-- This doesn't need to be deployed, — the server can run on localhost
-- Use Golang for implementation
-- Store space data in a local JSON file
+- Use Golang for implementation. The usage of 3rd-party libraries is allowed where it makes sense.
+- Store space data in a local JSON file. Ensure correct file handling with concurrent writes.
+- Use structured logging to the console and file for logs.
 
 Routes:
 
@@ -47,24 +53,28 @@ Routes:
 
 - Subscribes the client to updates to a space list
 
-/spaces/new
+POST /spaces/new
 
-- Creates a new space and a password for it
-- Redirects to the newly created space at /spaces/{id} with password included, so that the newly created space opens unlocked initially
+- Creates a new space and a password for it. The password should be stored securely (hash + salt), and in a separate file. We show the password in a clear text only once, when the space is created, and offer the client to copy and save it.
+- Redirects to the newly created space at /spaces/{id} with password included, so that the newly created space is unlocked initially.
 - The new space is in unlocked and "not started" state, so the user can edit its name and "start" the space by posting to `POST /spaces/{id}` route
+
+GET /spaces/{id}
+
+- Gets the current state of a space.
 
 POST /spaces/{id}
 
 - Updates the space at id {id}
 - Propagates the update made to the space to all clients subscribed to this /spaces/{id}/events and /spaces/events using SSE
 
-/spaces/{id}/events
+GET /spaces/{id}/events
 
-- Propagates the update made to the space to all clients subscribed to this space events
+- Subscribes a client to space updates using SSE.
 
-/spaces/events
+GET /spaces/events
 
-- Propagates the updates made to all spaces that need to be visible on the index page (e.g., a new space added or a space state has changed, like space has been started or a number of "evolved" cells has changed)
+- Subscribes a client to the general updates made to any of the existing spaces. This is needed to update the content on the index page dynamically, like a new space added or a space state has changed (e.g., space name, space state — started/stopped, number of active cells in the space, evolution round, etc.).
 
 ## Process
 
@@ -78,7 +88,7 @@ General:
 - Start with outlining the general design and plan for implementation.
 - Outline the proposed project/repository structure. i.e., the files you want to create, the tests you'd want to create, etc.
 - Outline the testing strategy that will ensure the correctness of the implementation.
-- Do not start actual implementation before receiving my agreement and confirmation
+- Do not start actual implementation before clarifying any outstanding questions and receiving my confirmation to proceed further.
 
 ### Next phase
 
