@@ -6,20 +6,29 @@ import (
 	"time"
 )
 
-func spinner() {
+func spinner(done chan bool) {
 	for {
-		for i, c := range "|/-\\" {
-			fmt.Printf("\r%c Working on it%s%s", c, strings.Repeat(".", i), strings.Repeat(" ", 3-i))
-			time.Sleep(time.Millisecond * 250)
+		select {
+		case <-done:
+			fmt.Println()
+			return
+		default:
+			for i, c := range "|/-\\" {
+				fmt.Printf("\r%c Working on it%s%s", c, strings.Repeat(".", i), strings.Repeat(" ", 3-i))
+				time.Sleep(time.Millisecond * 250)
+			}
 		}
 	}
 }
 
 func awfullyLongCalculation() {
-	time.Sleep(60 * time.Second)
+	time.Sleep(10 * time.Second)
 }
 
 func main() {
-	go spinner()
+	done := make(chan bool)
+	go spinner(done)
 	awfullyLongCalculation()
+	done <- true
+	fmt.Println("Done!")
 }
