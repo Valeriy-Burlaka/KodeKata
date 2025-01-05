@@ -6,29 +6,37 @@ import (
 	"time"
 )
 
-func spinner(done chan bool) {
+func spinner(done chan struct{}) {
+	ticker := time.NewTicker(250 * time.Millisecond)
+	defer ticker.Stop()
+
+	progress := 0
+	spinnerChars := []rune{'|', '/', '-', '\\'}
 	for {
 		select {
 		case <-done:
 			fmt.Println()
 			return
-		default:
-			for i, c := range "|/-\\" {
-				fmt.Printf("\r%c Working on it%s%s", c, strings.Repeat(".", i), strings.Repeat(" ", 3-i))
-				time.Sleep(time.Millisecond * 250)
-			}
+		case <-ticker.C:
+			charIndex := progress % len(spinnerChars)
+			currentChar := spinnerChars[charIndex]
+			fmt.Printf("\r%c Working on it%s%s",
+				currentChar,
+				strings.Repeat(".", charIndex),
+				strings.Repeat(" ", 3-charIndex))
+			progress++
 		}
 	}
 }
 
-func awfullyLongCalculation() {
-	time.Sleep(10 * time.Second)
+func awfullyLongCalculation(duration time.Duration) {
+	time.Sleep(duration)
 }
 
 func main() {
-	done := make(chan bool)
+	done := make(chan struct{})
 	go spinner(done)
-	awfullyLongCalculation()
-	done <- true
+	awfullyLongCalculation(5250 * time.Millisecond)
+	done <- struct{}{}
 	fmt.Println("Done!")
 }
