@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -20,6 +21,8 @@ const (
 	maxAttempts = 3
 	readTimeout = 2 * time.Second
 )
+
+const EOM = "%QUIT%"
 
 func init() {
 	flag.StringVar(&host, "h", "localhost", "Specify host")
@@ -38,18 +41,23 @@ func read(conn net.Conn) error {
 		}
 
 		n, err := conn.Read(buf)
-		msg := string(buf[:n])
-
+		msg := strings.TrimSpace(string(buf[:n]))
 		if n > 0 {
+			var end bool
+			if strings.Contains(msg, EOM) {
+				end = true
+				msg = strings.TrimSpace(strings.Replace(msg, EOM, "", -1))
+			}
 			log.Printf("Received %q (%d bytes)", msg, n)
-			if msg == "%QUIT%" {
-				log.Println("server ended communication with %QUIT% msg")
+
+			if end {
+				log.Printf("The server ended communication with %q msg", EOM)
 				return nil
 			}
 		}
 
 		if err == io.EOF {
-			log.Println("Server ended communication")
+			log.Println("The server ended communication")
 			return nil
 		}
 		if errors.Is(err, os.ErrDeadlineExceeded) {

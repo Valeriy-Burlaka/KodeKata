@@ -7,22 +7,34 @@ import (
 	"time"
 )
 
+const EOM = "%QUIT%"
+
 func write(conn net.Conn) error {
+	maxMsgs := 10
 	ticker := time.NewTicker(1 * time.Second)
 
 	defer ticker.Stop()
 	defer conn.Close()
 	defer log.Printf("Client %v disconnected", conn.RemoteAddr())
 
+	i := 1
 	for range ticker.C {
 		err := conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
 		if err != nil {
 			return fmt.Errorf("error setting write deadline: %w", err)
 		}
 
-		_, err = conn.Write([]byte(time.Now().Format(time.RFC1123)))
+		_, err = conn.Write([]byte(time.Now().Format(time.RFC1123) + "\n"))
 		if err != nil {
 			return fmt.Errorf("write error: %w", err)
+		}
+		i++
+		if i > maxMsgs {
+			_, err := conn.Write([]byte(EOM + "\n"))
+			if err != nil {
+				return fmt.Errorf("write error: %w", err)
+			}
+			return nil
 		}
 	}
 
