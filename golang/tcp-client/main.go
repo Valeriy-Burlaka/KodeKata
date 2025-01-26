@@ -18,7 +18,7 @@ const (
 	bufSize     = 4096
 	connTimeout = 5 * time.Second
 	maxAttempts = 3
-	readTimeout = 1 * time.Second
+	readTimeout = 2 * time.Second
 )
 
 func init() {

@@ -7,6 +7,28 @@ import (
 	"time"
 )
 
+func write(conn net.Conn) error {
+	ticker := time.NewTicker(1 * time.Second)
+
+	defer ticker.Stop()
+	defer conn.Close()
+	defer log.Printf("Client %v disconnected", conn.RemoteAddr())
+
+	for range ticker.C {
+		err := conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
+		if err != nil {
+			return fmt.Errorf("error setting write deadline: %w", err)
+		}
+
+		_, err = conn.Write([]byte(time.Now().Format(time.RFC1123)))
+		if err != nil {
+			return fmt.Errorf("write error: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	fmt.Println("Starting TCP server on port 8000")
 	server, err := net.Listen("tcp", "localhost:8000")
@@ -23,28 +45,10 @@ func main() {
 		}
 		log.Printf("New client connected from %v", conn.RemoteAddr())
 
-		func() {
-			ticker := time.NewTicker(1 * time.Second)
-
-			defer conn.Close()
-			defer ticker.Stop()
-
-			for range ticker.C {
-				err := conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
-				if err != nil {
-					log.Printf("Error setting write deadline: %v", err)
-					return
-				}
-
-				_, err = conn.Write([]byte(time.Now().Format(time.RFC1123)))
-				if err != nil {
-					log.Printf("Error writing to connection: %v", err)
-					return
-				}
-
+		go func() {
+			if err := write(conn); err != nil {
+				log.Printf("Error writing to connection: %v", err)
 			}
 		}()
-
-		log.Printf("Client %v disconnected", conn.RemoteAddr())
 	}
 }
