@@ -6,24 +6,19 @@ import (
 	"io"
 	"log"
 	"net"
-	"os"
 	"strings"
 	"time"
 )
 
-var port int64
+var port uint
 var tz string
 var loc *time.Location
 
 func init() {
-	flag.Int64Var(&port, "port", 8010, "clock server port")
+	flag.UintVar(&port, "port", 8010, "Clock server port")
+	flag.StringVar(&tz, "tz", "Europe/Kyiv", "Server time zone, as a valid IANA Time Zone name")
 
 	flag.Parse()
-
-	tz = os.Getenv("TZ")
-	if tz == "" {
-		log.Fatal("TZ environment variable is not set")
-	}
 
 	var err error
 	loc, err = time.LoadLocation(tz)
@@ -35,12 +30,27 @@ func init() {
 func handleConn(conn *net.Conn) (n int64, err error) {
 	defer (*conn).Close()
 
-	t := time.Now().In(loc)
-	msg := fmt.Sprintf("%s: %s", tz, t.Format(time.TimeOnly))
-	r := strings.NewReader(msg)
-	i, _ := io.Copy(*conn, r)
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
 
-	n += i
+	for range ticker.C {
+		t := time.Now().In(loc)
+		msg := fmt.Sprintf("%s: %s\n", tz, t.Format(time.TimeOnly))
+		r := strings.NewReader(msg)
+
+		err = (*conn).SetWriteDeadline(time.Now().Add(1 * time.Second))
+		if err != nil {
+			log.Printf("error setting conn write timeout: %v", err)
+			break
+		}
+
+		i, err := io.Copy(*conn, r)
+		n += i
+		if err != nil {
+			log.Printf("error writing to conn (%d bytes sent): %v", i, err)
+			break
+		}
+	}
 
 	return n, err
 }
@@ -57,8 +67,16 @@ func main() {
 		conn, err := server.Accept()
 		if err != nil {
 			log.Printf("error accepting connection: %v", err)
-			continue
+			return
 		}
-		handleConn(&conn)
+		log.Printf("accepted connection from %s", conn.LocalAddr().String())
+
+		go func(c net.Conn) {
+			nbytes, err := handleConn(&conn)
+			if err != nil {
+				log.Printf("error handling connection: %v", err)
+			}
+			log.Printf("wrote %d bytes to connection", nbytes)
+		}(conn)
 	}
 }

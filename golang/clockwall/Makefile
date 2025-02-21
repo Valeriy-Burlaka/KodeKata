@@ -6,10 +6,10 @@ tz-server: server/main.go
 build: tz-server
 
 start: build
-	TZ=America/Adak ./tz-server -port 8010 &
-	TZ=Europe/London ./tz-server -port 8020 &
-	TZ=Europe/Warsaw ./tz-server -port 8030 &
-	TZ=Europe/Kyiv ./tz-server -port 8040 &
+	./tz-server -port 8010 -tz America/Adak &
+	./tz-server -port 8020 -tz Europe/London &
+	./tz-server -port 8030 -tz Europe/Warsaw &
+	./tz-server -port 8040 -tz Europe/Kyiv &
 
 stop:
 	killall tz-server
