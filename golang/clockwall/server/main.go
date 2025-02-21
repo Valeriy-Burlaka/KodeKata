@@ -67,7 +67,7 @@ func main() {
 		conn, err := server.Accept()
 		if err != nil {
 			log.Printf("error accepting connection: %v", err)
-			return
+			continue
 		}
 		log.Printf("accepted connection from %s", conn.LocalAddr().String())
 
