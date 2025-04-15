@@ -81,17 +81,6 @@ func startClock(c *Clock) error {
 	}
 }
 
-func startClockMock(c *Clock) {
-	t := time.NewTicker(1 * time.Second)
-	defer t.Stop()
-
-	i := 0
-	for range t.C {
-		c.Time <- fmt.Sprintf("XX:XX:%02d", i%60)
-		i++
-	}
-}
-
 func clockTitle(c Clock) string {
 	pad := float64(clockWidth-len(c.City)) / 2
 	padLeft := int(math.Floor(pad))
@@ -180,10 +169,7 @@ func main() {
 		go func() error {
 			err := startClock(c)
 			if err != nil {
-				// slog.Error("failed to start clock", "error", err, "city", c.City)
-
 				return fmt.Errorf("failed to start clock for city: %s", c.City)
-				// startClockMock(c)
 			}
 
 			return nil
