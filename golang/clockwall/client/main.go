@@ -3,7 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
+	"log/slog"
 	"math"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -53,8 +56,29 @@ func parse(args []string) (res []Clock, err error) {
 }
 
 func startClock(c *Clock) error {
-	// TODO: should connect to a TCP time server
-	return fmt.Errorf("not implemented")
+	conn, err := net.Dial("tcp", fmt.Sprintf(":%d", c.Port))
+	if err != nil {
+		return fmt.Errorf("connecttion failed: %w", err)
+	}
+
+	slog.Info("connected", "city", c.City)
+
+	buf := make([]byte, 100)
+
+	for {
+		n, readErr := conn.Read(buf)
+		if n > 0 {
+			c.Time <- strings.TrimSpace(string(buf[:n]))
+		}
+		if readErr != nil {
+			if readErr == io.EOF {
+				slog.Info("the server ended comunication", "city", c.City)
+
+				return nil
+			}
+			slog.Error("read error", "error", readErr)
+		}
+	}
 }
 
 func startClockMock(c *Clock) {
@@ -121,6 +145,15 @@ func buildDisplay(clocks []Clock) ([][]byte, int) {
 func updateTime(c *Clock, row *[]byte, offset int) {
 	for {
 		t := <-c.Time
+		if len(t) > clockWidth {
+			slog.Error("invalid t received from server", "t_value", t)
+			displayMsg := []byte{'E', 'r', 'r', 'o', 'r'}
+			padding := (clockWidth - len(displayMsg)) / 2
+			for i := range displayMsg {
+				(*row)[offset+padding+i] = displayMsg[i]
+			}
+			return
+		}
 		padding := (clockWidth - len(t)) / 2
 		for i := range t {
 			(*row)[offset+padding+i] = t[i]
@@ -144,12 +177,16 @@ func main() {
 		ch := make(chan string, 5)
 		c.Time = ch
 
-		go func() {
+		go func() error {
 			err := startClock(c)
 			if err != nil {
-				// fmt.Printf("failed to start clock for %s: %v\n", c.City, err) - exit?
-				startClockMock(c)
+				// slog.Error("failed to start clock", "error", err, "city", c.City)
+
+				return fmt.Errorf("failed to start clock for city: %s", c.City)
+				// startClockMock(c)
 			}
+
+			return nil
 		}()
 		go updateTime(c, &clockDisplay[editableIndex], i*(clockWidth+interClockMargin))
 	}

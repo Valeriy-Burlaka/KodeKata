@@ -29,26 +29,6 @@ func init() {
 	}
 }
 
-func main() {
-	fmt.Printf("Streaming local time in %q on port: %d\n", tz, port)
-
-	server, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		log.Fatalf("server: %v", err)
-	}
-
-	for {
-		conn, err := server.Accept()
-		if err != nil {
-			log.Printf("failed to accept connection: %v", err)
-			continue
-		}
-		log.Printf("accepted connection from %s", conn.LocalAddr().String())
-
-		go handleConn(conn)
-	}
-}
-
 func handleConn(conn net.Conn) {
 	defer conn.Close()
 
@@ -77,10 +57,30 @@ func writeMsg(conn net.Conn) error {
 		return fmt.Errorf("failed to set deadline: %w", err)
 	}
 
-	msg := fmt.Sprintf("%s: %s\n", tz, t.Format(time.TimeOnly))
+	msg := fmt.Sprintf("%s\n", t.Format(time.TimeOnly))
 	if _, err := io.WriteString(conn, msg); err != nil {
 		return fmt.Errorf("failed to write to conn: %w", err)
 	}
 
 	return nil
+}
+
+func main() {
+	fmt.Printf("Streaming local time in %q on port: %d\n", tz, port)
+
+	server, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		log.Fatalf("server: %v", err)
+	}
+
+	for {
+		conn, err := server.Accept()
+		if err != nil {
+			log.Printf("failed to accept connection: %v", err)
+			continue
+		}
+		log.Printf("accepted connection from %s", conn.LocalAddr().String())
+
+		go handleConn(conn)
+	}
 }
