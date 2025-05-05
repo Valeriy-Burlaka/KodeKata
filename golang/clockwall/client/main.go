@@ -55,28 +55,105 @@ func parse(args []string) (res []Clock, err error) {
 	return res, nil
 }
 
+// const (
+// 	StateUnknown = iota
+// 	StateConnecting
+// 	StateConnectionError
+// 	StateConnected
+// 	StateReadError
+// 	StatePermanentReadError
+// 	StateOK
+// )
+
 func startClock(c *Clock) error {
-	conn, err := net.Dial("tcp", fmt.Sprintf(":%d", c.Port))
-	if err != nil {
-		return fmt.Errorf("connecttion failed: %w", err)
-	}
-
-	slog.Info("connected", "city", c.City)
-
-	buf := make([]byte, 100)
+	maxConnAttempts := 60
+	maxReadAttempts := 30
+	readTimeout := 1 * time.Second
+	waitTime := 1 * time.Second
 
 	for {
-		n, readErr := conn.Read(buf)
-		if n > 0 {
-			c.Time <- strings.TrimSpace(string(buf[:n]))
-		}
-		if readErr != nil {
-			if readErr == io.EOF {
-				slog.Info("the server ended comunication", "city", c.City)
+		connAttempt := 0
+		readAttempt := 0
 
-				return nil
+		var conn net.Conn
+
+	connecting:
+		for {
+			connAttempt++
+
+			var err error
+			conn, err = net.Dial("tcp", fmt.Sprintf(":%d", c.Port))
+			if err != nil {
+				if connAttempt > maxConnAttempts {
+					slog.Error("connection to time server failed",
+						"city", c.City,
+						"error", err,
+						"attempts_made", connAttempt,
+					)
+					c.Time <- "Error"
+
+					return fmt.Errorf("connecttion failed: %w", err)
+				}
+
+				c.Time <- "Loading" + strings.Repeat(".", connAttempt%3)
+				time.Sleep(waitTime)
+
+				continue
 			}
-			slog.Error("read error", "error", readErr)
+
+			break connecting
+		}
+
+		buf := make([]byte, 100)
+
+	reading:
+		for {
+			readAttempt++
+
+			err := conn.SetReadDeadline(time.Now().Add(readTimeout))
+			if err != nil {
+				if readAttempt > maxReadAttempts {
+					slog.Error("setting connection read deadline failed",
+						"city", c.City,
+						"error", err,
+						"attempts_made", readAttempt,
+					)
+					c.Time <- "Error"
+
+					return fmt.Errorf("read failed: %w", err)
+				}
+				c.Time <- "Waiting" + strings.Repeat(".", readAttempt%3)
+				time.Sleep(waitTime)
+
+				continue
+			}
+
+			n, readErr := conn.Read(buf)
+			if n > 0 {
+				c.Time <- strings.TrimSpace(string(buf[:n]))
+			}
+
+			if readErr != nil {
+				if readErr == io.EOF {
+					slog.Info("the server ended comunication", "city", c.City)
+					c.Time <- "Stand by"
+
+					return nil
+				}
+
+				if readAttempt > maxReadAttempts {
+					slog.Error("reading from connection failed",
+						"city", c.City,
+						"attempts_made", readAttempt,
+						"error", readErr,
+					)
+					c.Time <- "Error"
+
+					break reading // try to re-connect again
+				}
+			} else {
+				readAttempt = 0
+			}
 		}
 	}
 }
