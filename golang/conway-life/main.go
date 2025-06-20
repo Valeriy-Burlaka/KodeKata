@@ -12,13 +12,12 @@ const GRID_MIN_HEIGHT = 5
 const GRID_MAX_WIDTH = 1<<16 - 1
 const GRID_MAX_HEIGHT = 1<<16 - 1
 
-
 type Pattern string
 
 func (p Pattern) Parse() [][]bool {
 	parsed := slices.DeleteFunc(
 		strings.Split(string(p), "\n"),
-		func (s string) bool {
+		func(s string) bool {
 			return s == ""
 		},
 	)
@@ -28,7 +27,7 @@ func (p Pattern) Parse() [][]bool {
 				p, len(parsed[0]), i, len(parsed[i]))
 		}
 	}
-	
+
 	result := make([][]bool, len(parsed))
 
 	for i, row := range parsed {
@@ -46,11 +45,22 @@ var Kickback Pattern = `
 X--
 XXX
 `
+var Kickback_180 Pattern = `
+-XX
+X-X
+--X
+`
+var Anvil Pattern = `
+-XXXX--
+X----X-
+-XXX-X-
+---X-XX
+`
 
 type Cell struct {
 	// y uint16
 	// x uint16
-	isAlive bool
+	isAlive   bool
 	neighbors []*Cell
 }
 
@@ -60,31 +70,51 @@ type Cell struct {
 // 	return c
 // }
 
-
 // func NewCell() Cell {
 // 	c := Cell{neighbors: make([]*Cell, 0, 8)}
 
 // 	return c
 // }
 
-func (c *Cell) AddNeighbor (n *Cell) {
+func (c *Cell) AddNeighbor(n *Cell) {
 	c.neighbors = append(c.neighbors, n)
 }
 
-func (c *Cell) AddNeighbors (nn... *Cell) {
+func (c *Cell) AddNeighbors(nn ...*Cell) {
 	for _, n := range nn {
 		c.neighbors = append(c.neighbors, n)
 	}
 }
 
 type Grid struct {
-	width uint16
-	height uint16
-	cells []Cell
+	width     uint16
+	height    uint16
+	cells     []Cell
 	cellIndex map[uint16][]*Cell
 }
 
-func NewGrid(width, height uint16) (*Grid, error) {
+func (g *Grid) String() string {
+	var sb strings.Builder
+	sb.Grow(int(g.width*g.height + g.height)) // cells + newlines
+
+	var i uint16
+	max := uint16(len(g.cells))
+	for i = 0; i < max; i++ {
+		if i != 0 && i%g.width == 0 {
+			sb.WriteString("\n")
+		}
+
+		if g.cells[i].isAlive {
+			sb.WriteString("X")
+		} else {
+			sb.WriteString("-")
+		}
+	}
+
+	return sb.String()
+}
+
+func NewGrid(width, height uint16, pattern *Pattern) (*Grid, error) {
 	if width > GRID_MAX_WIDTH {
 		return nil, fmt.Errorf("failed to create new grid, width %d is too big (max width=%d)", width, GRID_MAX_WIDTH)
 	} else if width < GRID_MIN_WIDTH {
@@ -97,9 +127,9 @@ func NewGrid(width, height uint16) (*Grid, error) {
 	}
 
 	g := Grid{
-		width: width,
-		height: height,
-		cells: make([]Cell, width*height),
+		width:     width,
+		height:    height,
+		cells:     make([]Cell, width*height),
 		cellIndex: make(map[uint16][]*Cell, height),
 	}
 
@@ -110,8 +140,8 @@ func NewGrid(width, height uint16) (*Grid, error) {
 		row := make([]*Cell, width)
 		for x = 0; x < width; x++ {
 			c := Cell{}
-			g.cells[y*width + x] = c
-			row[x] = &c
+			g.cells[y*width+x] = c
+			row[x] = &g.cells[y*width+x]
 		}
 		g.cellIndex[y] = row
 	}
@@ -134,7 +164,7 @@ func NewGrid(width, height uint16) (*Grid, error) {
 					g.cellIndex[y+1][x],
 					g.cellIndex[y+1][x+1],
 				}
-			case width-1:
+			case width - 1:
 				// top right corner
 				g.cells[i].neighbors = []*Cell{
 					g.cellIndex[y][x-1],
@@ -151,7 +181,7 @@ func NewGrid(width, height uint16) (*Grid, error) {
 					g.cellIndex[y+1][x+1],
 				}
 			}
-		case height-1:
+		case height - 1:
 			// bottom row
 			switch x {
 			case 0:
@@ -161,7 +191,7 @@ func NewGrid(width, height uint16) (*Grid, error) {
 					g.cellIndex[y-1][x+1],
 					g.cellIndex[y][x+1],
 				}
-			case width-1:
+			case width - 1:
 				// bottom right corner
 				g.cells[i].neighbors = []*Cell{
 					g.cellIndex[y-1][x],
@@ -190,7 +220,7 @@ func NewGrid(width, height uint16) (*Grid, error) {
 					g.cellIndex[y+1][x+1],
 					g.cellIndex[y+1][x],
 				}
-			case width-1:
+			case width - 1:
 				// right-edge column
 				g.cells[i].neighbors = []*Cell{
 					g.cellIndex[y-1][x],
@@ -217,6 +247,18 @@ func NewGrid(width, height uint16) (*Grid, error) {
 	}
 
 	// Populate living cells from the seed pattern
+	p := pattern.Parse()
+	startFromX := (int(g.width) - len(p[0])) / 2
+	startFromY := (int(g.height) - len(p)) / 2
+	fmt.Println(startFromX, startFromY, "\n", p)
+
+	for y, row := range p {
+		for x, isAlive := range row {
+			cy := uint16(startFromY + y)
+			cx := uint16(startFromX + x)
+			g.cellIndex[cy][cx].isAlive = isAlive
+		}
+	}
 
 	return &g, nil
 }
@@ -224,16 +266,19 @@ func NewGrid(width, height uint16) (*Grid, error) {
 // Grid.Render()
 // Grid.Evolve()
 
+func init() {
+	Kickback.Parse()
+	Kickback_180.Parse()
+	Anvil.Parse()
+}
+
 func main() {
 
 	// Init a Grid
-	// g, err := NewGrid(5, 5)
-	// if err != nil {
-	// 	log.Fatalf("failed to run: %v", err)
-	// }
+	g, err := NewGrid(5, 5, &Kickback)
+	if err != nil {
+		log.Fatalf("failed to run: %v", err)
+	}
 
-	// fmt.Println(g)
-
-	p := Kickback.Parse()
-	fmt.Println(p)
+	fmt.Println(g)
 }
