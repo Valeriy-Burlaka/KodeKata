@@ -40,6 +40,12 @@ func (p Pattern) Parse() [][]bool {
 	return result
 }
 
+// Alternative:
+// `
+// ◻◼
+// `
+// (more visual but less convinient, because I'll have to copy-paste instead of typing)
+
 var Kickback Pattern = `
 -X-
 X--
@@ -58,23 +64,9 @@ X----X-
 `
 
 type Cell struct {
-	// y uint16
-	// x uint16
 	isAlive   bool
 	neighbors []*Cell
 }
-
-// func NewCell(y, x uint16) Cell {
-// 	c := Cell{y: y, x: x, neighbors: make([]*Cell, 0, 8)}
-
-// 	return c
-// }
-
-// func NewCell() Cell {
-// 	c := Cell{neighbors: make([]*Cell, 0, 8)}
-
-// 	return c
-// }
 
 func (c *Cell) AddNeighbor(n *Cell) {
 	c.neighbors = append(c.neighbors, n)
@@ -105,9 +97,11 @@ func (g *Grid) String() string {
 		}
 
 		if g.cells[i].isAlive {
-			sb.WriteString("X")
+			// https://en.wikipedia.org/wiki/Geometric_Shapes_(Unicode_block)
+			sb.WriteRune('\u25FC')
 		} else {
-			sb.WriteString("-")
+			sb.WriteRune('\u25FB')
+
 		}
 	}
 
@@ -250,7 +244,6 @@ func NewGrid(width, height uint16, pattern *Pattern) (*Grid, error) {
 	p := pattern.Parse()
 	startFromX := (int(g.width) - len(p[0])) / 2
 	startFromY := (int(g.height) - len(p)) / 2
-	fmt.Println(startFromX, startFromY, "\n", p)
 
 	for y, row := range p {
 		for x, isAlive := range row {
@@ -263,7 +256,6 @@ func NewGrid(width, height uint16, pattern *Pattern) (*Grid, error) {
 	return &g, nil
 }
 
-// Grid.Render()
 // Grid.Evolve()
 
 func init() {
@@ -276,6 +268,13 @@ func main() {
 
 	// Init a Grid
 	g, err := NewGrid(5, 5, &Kickback)
+	if err != nil {
+		log.Fatalf("failed to run: %v", err)
+	}
+
+	fmt.Println(g)
+
+	g, err = NewGrid(15, 15, &Anvil)
 	if err != nil {
 		log.Fatalf("failed to run: %v", err)
 	}
