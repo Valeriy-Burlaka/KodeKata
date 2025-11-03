@@ -12,56 +12,48 @@ const GRID_MIN_HEIGHT = 5
 const GRID_MAX_WIDTH = 1<<16 - 1
 const GRID_MAX_HEIGHT = 1<<16 - 1
 
-type Pattern string
-
-func (p Pattern) Parse() [][]bool {
-	parsed := slices.DeleteFunc(
-		strings.Split(string(p), "\n"),
-		func(s string) bool {
-			return s == ""
-		},
-	)
-	for i, _ := range parsed {
-		if len(parsed[i]) != len(parsed[0]) {
-			log.Fatalf("Invalid pattern:\n%s\nAll rows must have the same length = %d but row %d has length = %d",
-				p, len(parsed[0]), i, len(parsed[i]))
-		}
-	}
-
-	result := make([][]bool, len(parsed))
-
-	for i, row := range parsed {
-		result[i] = make([]bool, len(row))
-		for j, sym := range row {
-			result[i][j] = string(sym) == "X"
-		}
-	}
-
-	return result
-}
-
-// Alternative:
-// `
-// ◻◼
-// `
-// (more visual but less convinient, because I'll have to copy-paste instead of typing)
-
-var Kickback Pattern = `
+// Cell patterns are defined using "X" (live) and "-" (dead) for simplicity, because they can
+// be typed. The rendered version uses Unicode shapes because they look better in the terminal.
+var Kickback = `
 -X-
 X--
 XXX
 `
-var Kickback_180 Pattern = `
+var Kickback_180 = `
 -XX
 X-X
 --X
 `
-var Anvil Pattern = `
+var Anvil = `
 -XXXX--
 X----X-
 -XXX-X-
 ---X-XX
 `
+
+func parsePattern(p string) [][]bool {
+	split := strings.Split(string(p), "\n")
+	cleaned := slices.DeleteFunc(split, func(s string) bool { return s == "" })
+
+	for i, _ := range cleaned {
+		if len(cleaned[i]) != len(cleaned[0]) {
+			log.Fatalf("Invalid pattern:\n%s\nAll rows must have the same length as the first row (%d), but row %d has length %d",
+				p, len(cleaned[0]), i, len(cleaned[i]))
+		}
+	}
+
+	result := make([][]bool, len(cleaned))
+
+	for i, row := range cleaned {
+		result[i] = make([]bool, len(row))
+
+		for j, symb := range row {
+			result[i][j] = string(symb) == "X"
+		}
+	}
+
+	return result
+}
 
 type Cell struct {
 	isAlive   bool
@@ -108,7 +100,7 @@ func (g *Grid) String() string {
 	return sb.String()
 }
 
-func NewGrid(width, height uint16, pattern *Pattern) (*Grid, error) {
+func NewGrid(width, height uint16, pattern string) (*Grid, error) {
 	if width > GRID_MAX_WIDTH {
 		return nil, fmt.Errorf("failed to create new grid, width %d is too big (max width=%d)", width, GRID_MAX_WIDTH)
 	} else if width < GRID_MIN_WIDTH {
@@ -241,7 +233,7 @@ func NewGrid(width, height uint16, pattern *Pattern) (*Grid, error) {
 	}
 
 	// Populate living cells from the seed pattern
-	p := pattern.Parse()
+	p := parsePattern(pattern)
 	startFromX := (int(g.width) - len(p[0])) / 2
 	startFromY := (int(g.height) - len(p)) / 2
 
@@ -256,25 +248,31 @@ func NewGrid(width, height uint16, pattern *Pattern) (*Grid, error) {
 	return &g, nil
 }
 
+// https://en.wikipedia.org/wiki/Conway's_Game_of_Life#Rules
+// 1. Any live cell with fewer than two live neighbours dies, as if by underpopulation.
+// 2. Any live cell with two or three live neighbours lives on to the next generation.
+// 3. Any live cell with more than three live neighbours dies, as if by overpopulation.
+// 4. Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
+
 // Grid.Evolve()
 
 func init() {
-	Kickback.Parse()
-	Kickback_180.Parse()
-	Anvil.Parse()
+	parsePattern(Kickback)
+	parsePattern(Kickback_180)
+	parsePattern(Anvil)
 }
 
 func main() {
 
 	// Init a Grid
-	g, err := NewGrid(5, 5, &Kickback)
+	g, err := NewGrid(5, 5, Kickback)
 	if err != nil {
 		log.Fatalf("failed to run: %v", err)
 	}
 
 	fmt.Println(g)
 
-	g, err = NewGrid(15, 15, &Anvil)
+	g, err = NewGrid(15, 15, Anvil)
 	if err != nil {
 		log.Fatalf("failed to run: %v", err)
 	}
