@@ -48,7 +48,12 @@ func parsePattern(p string) [][]bool {
 		result[i] = make([]bool, len(row))
 
 		for j, symb := range row {
-			result[i][j] = string(symb) == "X"
+			if symb != 'X' && symb != '-' {
+				// TODO: this tell nothing about which pattern triggered the error
+				log.Fatalf("Invalid pattern symbol '%c' (row %d, column %d. Only 'X' and '-' symbols are allowed when defining patterns",
+					symb, i, j)
+			}
+			result[i][j] = symb == 'X'
 		}
 	}
 
@@ -77,6 +82,20 @@ type Grid struct {
 	cellIndex map[uint16][]*Cell
 }
 
+func (g *Grid) DrawPattern(p [][]bool) {
+	// Populate living cells from a seed pattern
+	startFromX := (int(g.width) - len(p[0])) / 2
+	startFromY := (int(g.height) - len(p)) / 2
+
+	for y, row := range p {
+		for x, isAlive := range row {
+			cy := uint16(startFromY + y)
+			cx := uint16(startFromX + x)
+			g.cellIndex[cy][cx].isAlive = isAlive
+		}
+	}
+}
+
 func (g *Grid) String() string {
 	var sb strings.Builder
 	sb.Grow(int(g.width*g.height + g.height)) // cells + newlines
@@ -100,7 +119,7 @@ func (g *Grid) String() string {
 	return sb.String()
 }
 
-func NewGrid(width, height uint16, pattern string) (*Grid, error) {
+func NewGrid(width, height uint16) (*Grid, error) {
 	if width > GRID_MAX_WIDTH {
 		return nil, fmt.Errorf("failed to create new grid, width %d is too big (max width=%d)", width, GRID_MAX_WIDTH)
 	} else if width < GRID_MIN_WIDTH {
@@ -232,19 +251,6 @@ func NewGrid(width, height uint16, pattern string) (*Grid, error) {
 		}
 	}
 
-	// Populate living cells from the seed pattern
-	p := parsePattern(pattern)
-	startFromX := (int(g.width) - len(p[0])) / 2
-	startFromY := (int(g.height) - len(p)) / 2
-
-	for y, row := range p {
-		for x, isAlive := range row {
-			cy := uint16(startFromY + y)
-			cx := uint16(startFromX + x)
-			g.cellIndex[cy][cx].isAlive = isAlive
-		}
-	}
-
 	return &g, nil
 }
 
@@ -265,17 +271,23 @@ func init() {
 func main() {
 
 	// Init a Grid
-	g, err := NewGrid(5, 5, Kickback)
+	g, err := NewGrid(5, 5)
 	if err != nil {
 		log.Fatalf("failed to run: %v", err)
 	}
+
+	p := parsePattern(Kickback)
+	g.DrawPattern(p)
 
 	fmt.Println(g)
 
-	g, err = NewGrid(15, 15, Anvil)
+	g, err = NewGrid(10, 10)
 	if err != nil {
 		log.Fatalf("failed to run: %v", err)
 	}
+
+	p = parsePattern(Anvil)
+	g.DrawPattern(p)
 
 	fmt.Println(g)
 }
